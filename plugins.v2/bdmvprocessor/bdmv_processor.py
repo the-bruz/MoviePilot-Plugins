@@ -9,21 +9,11 @@ class BDMVProcessor:
 
     _TINFO_DURATION_INDEX: int = 8
 
-    def __init__(self, bdmv_root_path: str, 
-                 output_dir_path: Optional[str] = None, 
-                 container_name: str = "makemkv") -> None:
-        self.bdmv_root: str = bdmv_root_path
-        self.movie_name: str = Path(self.bdmv_root).name
-        
-        if not output_dir_path:
-            self.output_dir: str = f"{self.bdmv_root}_remuxed"
-        else:
-            self.output_dir: str = output_dir_path
-            
+    def __init__(self, container_name: str = "makemkv") -> None:
         self.container_name: str = container_name
-        self._validate_environment()
 
-    def _validate_environment(self) -> None:
+    def validate_environment(self) -> None:
+        """检查 Docker 及 MakeMKV 容器是否可用，建议在批量任务开始前调用一次。"""
         try:
             subprocess.run(["docker", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["docker", "inspect", self.container_name], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -78,7 +68,13 @@ class BDMVProcessor:
                 logger.debug(f"已删除旧文件: {f.name}")
             logger.info("清理完毕，输出目录已就绪。")
 
-    def remux_to_mkv(self, extract_all: bool = False) -> None:
+    def remux_to_mkv(self, bdmv_root_path: str,
+                     output_dir_path: Optional[str] = None,
+                     extract_all: bool = False) -> None:
+        self.bdmv_root: str = bdmv_root_path
+        self.movie_name: str = Path(self.bdmv_root).name
+        self.output_dir: str = output_dir_path or f"{self.bdmv_root}_remuxed"
+
         logger.info(f"开始处理原盘: {self.bdmv_root}")
         
         try:
@@ -122,4 +118,4 @@ class BDMVProcessor:
         except subprocess.CalledProcessError as e:
             logger.error("Docker/MakeMKV 执行失败:")
             logger.error(f"标准错误 (Stderr):\n{e.stderr}")
-            raise e
+            raise

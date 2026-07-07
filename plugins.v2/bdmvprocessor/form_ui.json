@@ -10,6 +10,37 @@
             "props": { "cols": 12, "md": 6 },
             "content": [
               {
+                "component": "VSwitch",
+                "props": {
+                  "model": "enabled",
+                  "label": "启用插件"
+                }
+              }
+            ]
+          },
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
+                "component": "VSwitch",
+                "props": {
+                  "model": "run_once",
+                  "label": "保存后立即运行一次"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "component": "VRow",
+        "content": [
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
                 "component": "VTextField",
                 "props": {
                   "model": "container_name",
