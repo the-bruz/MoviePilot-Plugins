@@ -9,20 +9,41 @@ class BDMVProcessor:
 
     _TINFO_DURATION_INDEX: int = 8
 
-    def __init__(self, container_name: str = "makemkv") -> None:
-        self.container_name: str = container_name
+    def __init__(self) -> None:
+        pass
 
     def validate_environment(self) -> None:
-        """检查 Docker 及 MakeMKV 容器是否可用，建议在批量任务开始前调用一次。"""
+        """检查 MakeMKV 是否可用，如果不存则自动尝试编译安装。"""
         try:
-            subprocess.run(["docker", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["docker", "inspect", self.container_name], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["docker", "exec", self.container_name, "makemkvcon", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["makemkvcon"], capture_output=True, check=False)
+            logger.info("环境检查通过，makemkvcon 已安装。")
+        except FileNotFoundError:
+            logger.warning("未检测到 makemkvcon，正在尝试自动编译安装，这可能需要几分钟，请耐心等待...")
+            self._install_makemkv()
         except Exception as e:
-            raise RuntimeError(f"环境或容器检查失败，请确认 Docker 及容器状态。详细信息: {e}")
+            raise RuntimeError(f"环境检查失败，详细信息: {e}")
+
+    def _install_makemkv(self) -> None:
+        script_path = Path(__file__).parent / "install_makemkv.sh"
+        if not script_path.exists():
+            raise RuntimeError(f"安装脚本丢失: {script_path}")
+        
+        try:
+            # 这里的执行输出直接导向到系统日志，方便排查
+            process = subprocess.run(
+                ["bash", str(script_path)], 
+                capture_output=True, 
+                text=True, 
+                check=True
+            )
+            logger.info("MakeMKV 自动编译安装完成！")
+            logger.debug(f"安装日志输出: {process.stdout}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"MakeMKV 自动安装失败:\n{e.stderr}")
+            raise RuntimeError("MakeMKV 自动安装失败，请查看日志或尝试手动进入容器安装。")
 
     def _extract_info(self) -> Dict[int, Dict[int, str]]:
-        cmd = ["docker", "exec", self.container_name, "makemkvcon", "--robot", "info", f"file:{self.bdmv_root}"]
+        cmd = ["makemkvcon", "--robot", "info", f"file:{self.bdmv_root}"]
         logger.info("正在扫描原盘媒体信息，请稍候...")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
@@ -92,7 +113,6 @@ class BDMVProcessor:
 
             # 3. 封装
             cmd = [
-                "docker", "exec", self.container_name,
                 "makemkvcon", "mkv", f"file:{self.bdmv_root}", 
                 target_title, self.output_dir
             ]

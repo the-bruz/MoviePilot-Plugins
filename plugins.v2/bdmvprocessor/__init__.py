@@ -84,14 +84,12 @@ class BDMVProcessorPlugin(_PluginBase):
         self._stop_event.set()
         logger.info("收到停用信号，正在终止所有的 BDMV 扫描与封装任务...")
 
-        container_name = (self.get_config() or {}).get("container_name", "makemkv")
         try:
-            # -9 强制杀掉，这样正在执行的 subprocess.run 会因为远端断开而立刻报错退出
             subprocess.run(
-                ["docker", "exec", container_name, "pkill", "-9", "makemkvcon"],
+                ["pkill", "-9", "makemkvcon"],
                 capture_output=True, check=False
             )
-            logger.info(f"已向容器 {container_name} 发送 makemkvcon 进程终结信号。")
+            logger.info("已发送 makemkvcon 进程终结信号。")
         except Exception as e:
             logger.error(f"尝试终止 makemkvcon 进程时发生异常: {e}")
     
@@ -109,7 +107,6 @@ class BDMVProcessorPlugin(_PluginBase):
         default_config = {
             "enabled": False,
             "run_once": False,
-            "container_name": "makemkv",
             "library_paths": "/volume1/media/movies",
             "delete_mode": "keep_all",
             "cron_schedule": "0 3 * * *",
@@ -167,7 +164,6 @@ class BDMVProcessorPlugin(_PluginBase):
         logger.info("开始执行蓝光原盘扫描任务...")
 
         config = self.get_config() or {}
-        container_name = config.get("container_name", "makemkv")
         delete_mode = config.get("delete_mode", "keep_all")
         library_paths_str = config.get("library_paths", "")
 
@@ -181,7 +177,7 @@ class BDMVProcessorPlugin(_PluginBase):
             library_dirs = [Path(p.strip()) for p in library_paths_str.split(",") if p.strip()]
 
         # 复用同一个 Processor 实例，环境检查仅执行一次
-        processor = BDMVProcessor(container_name=container_name)
+        processor = BDMVProcessor()
         processor.validate_environment()
 
         for lib_dir in library_dirs:

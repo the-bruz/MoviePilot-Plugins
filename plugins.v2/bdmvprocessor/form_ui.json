@@ -38,21 +38,7 @@
         "content": [
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
-            "content": [
-              {
-                "component": "VTextField",
-                "props": {
-                  "model": "container_name",
-                  "label": "MakeMKV 容器名称",
-                  "placeholder": "请输入 Docker 容器名称"
-                }
-              }
-            ]
-          },
-          {
-            "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
+            "props": { "cols": 12 },
             "content": [
               {
                 "component": "VCronField",
