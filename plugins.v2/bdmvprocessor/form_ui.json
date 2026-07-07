@@ -1,0 +1,76 @@
+[
+  {
+    "component": "VForm",
+    "content": [
+      {
+        "component": "VRow",
+        "content": [
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
+                "component": "VTextField",
+                "props": {
+                  "model": "container_name",
+                  "label": "MakeMKV 容器名称",
+                  "placeholder": "请输入 Docker 容器名称"
+                }
+              }
+            ]
+          },
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
+                "component": "VCronField",
+                "props": {
+                  "model": "cron_schedule",
+                  "label": "定时运行策略 (Cron 表达式)",
+                  "placeholder": "例如: 0 3 * * *"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "component": "VRow",
+        "content": [
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
+                "component": "VTextField",
+                "props": {
+                  "model": "library_paths",
+                  "label": "媒体库根目录 (多个目录用英文逗号分隔)",
+                  "placeholder": "例如: /volume1/media/movies,/volume1/media/anime"
+                }
+              }
+            ]
+          },
+          {
+            "component": "VCol",
+            "props": { "cols": 12, "md": 6 },
+            "content": [
+              {
+                "component": "VSelect",
+                "props": {
+                  "model": "delete_mode",
+                  "label": "源文件清理策略",
+                  "items": [
+                    { "title": "不删 (保留原盘 BDMV 等所有源文件)", "value": "keep_all" },
+                    { "title": "处理成功后仅删除原盘结构 (BDMV与CERTIFICATE)", "value": "delete_bdmv" }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,12 +1,8 @@
 import csv
-import logging
+from app.log import logger
 import subprocess
 from pathlib import Path
 from typing import Dict, Optional
-
-# 配置日志输出
-logger = logging.getLogger(__name__)
-
 
 class BDMVProcessor:
     """蓝光 BDMV 原盘自动化重封装处理器。"""
@@ -37,7 +33,7 @@ class BDMVProcessor:
 
     def _extract_info(self) -> Dict[int, Dict[int, str]]:
         cmd = ["docker", "exec", self.container_name, "makemkvcon", "--robot", "info", f"file:{self.bdmv_root}"]
-        logging.info("正在扫描原盘媒体信息，请稍候...")
+        logger.info("正在扫描原盘媒体信息，请稍候...")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         
         titles: Dict[int, Dict[int, str]] = {}
@@ -69,21 +65,21 @@ class BDMVProcessor:
         out_path = Path(self.output_dir)
         
         if not out_path.exists():
-            logging.info(f"输出目录不存在，正在创建: {self.output_dir}")
+            logger.info(f"输出目录不存在，正在创建: {self.output_dir}")
             out_path.mkdir(parents=True, exist_ok=True)
             return
 
         # 仅清理 MKV，防误删
         old_mkvs = list(out_path.glob("*.mkv"))
         if old_mkvs:
-            logging.warning(f"发现输出目录中存在 {len(old_mkvs)} 个历史 MKV 文件，正在清空...")
+            logger.warning(f"发现输出目录中存在 {len(old_mkvs)} 个历史 MKV 文件，正在清空...")
             for f in old_mkvs:
                 f.unlink()
-                logging.debug(f"已删除旧文件: {f.name}")
-            logging.info("清理完毕，输出目录已就绪。")
+                logger.debug(f"已删除旧文件: {f.name}")
+            logger.info("清理完毕，输出目录已就绪。")
 
     def remux_to_mkv(self, extract_all: bool = False) -> None:
-        logging.info(f"开始处理原盘: {self.bdmv_root}")
+        logger.info(f"开始处理原盘: {self.bdmv_root}")
         
         try:
             # 1. 运行前确保目录纯净
@@ -93,10 +89,10 @@ class BDMVProcessor:
             if not extract_all:
                 titles = self._extract_info()
                 target_title = self._get_longest_title(titles)
-                logging.info(f"自动识别主正片 Title ID: {target_title}")
+                logger.info(f"自动识别主正片 Title ID: {target_title}")
             else:
                 target_title = "all"
-                logging.info("配置为提取原盘中的全部 Title。")
+                logger.info("配置为提取原盘中的全部 Title。")
 
             # 3. 封装
             cmd = [
@@ -104,7 +100,7 @@ class BDMVProcessor:
                 "makemkvcon", "mkv", f"file:{self.bdmv_root}", 
                 target_title, self.output_dir
             ]
-            logging.info("开始执行核心封装命令...")
+            logger.info("开始执行核心封装命令...")
             subprocess.run(cmd, 
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
@@ -113,16 +109,17 @@ class BDMVProcessor:
             )
 
             # 4. 极简重命名逻辑（因为此前已清空，所有 mkv 均是刚生成的）
-            logging.info("重封装完成，正在按序重命名...")
+            logger.info("重封装完成，正在按序重命名...")
             mkv_files = sorted(Path(self.output_dir).glob("*.mkv"))
             
             for index, mkv_file in enumerate(mkv_files):
                 new_file = mkv_file.with_name(f"{self.movie_name}_t{index:02d}.mkv")
                 mkv_file.rename(new_file)
-                logging.info(f"-> 成功生成: {new_file.name}")
+                logger.info(f"-> 成功生成: {new_file.name}")
             
-            logging.info(f"全部任务圆满结束！输出目录: {self.output_dir}")
+            logger.info(f"全部任务圆满结束！输出目录: {self.output_dir}")
             
         except subprocess.CalledProcessError as e:
-            logging.error("Docker/MakeMKV 执行失败:")
-            logging.error(f"标准错误 (Stderr):\n{e.stderr}")
+            logger.error("Docker/MakeMKV 执行失败:")
+            logger.error(f"标准错误 (Stderr):\n{e.stderr}")
+            raise e
