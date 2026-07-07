@@ -1,14 +1,15 @@
 {
   "": {
-    "name": "",
-    "description": "",
+    "name": "蓝光原盘重封装",
+    "description": "读取整理列表，找到含BDMV文件夹的目标并重封装为mkv格式。依赖makedmkv容器。",
     "labels": "",
-    "version": "",
-    "icon": "",
-    "author": "",
-    "level": -1,
+    "version": "1.0.0",
+    "icon": "bdmvprocessor_icon.png",
+    "author": "bruz",
+    "level": 1,
+    "release": false,
     "history": {
-      "v1.0": ""
+      "v1.0": "Initial release."
     }
   }
 }
