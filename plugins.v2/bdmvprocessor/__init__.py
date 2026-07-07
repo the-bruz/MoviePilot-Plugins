@@ -5,7 +5,7 @@ from app.plugins import _PluginBase
 
 class BDMVProcessorPlugin(_PluginBase):
     plugin_name = "蓝光原盘重封装"
-    plugin_desc = "读取整理列表，找到含BDMV文件夹的目标并重封装为mkv格式。"
+    plugin_desc = "读取整理列表，找到含BDMV文件夹的目标并重封装为mkv格式。依赖makemkv容器。"
     plugin_icon = "bdmvprocessor_icon.png"
     plugin_version = "1.0.0"
     
