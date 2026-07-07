@@ -129,7 +129,10 @@ class BDMVProcessor:
             mkv_files = sorted(Path(self.output_dir).glob("*.mkv"))
             
             for index, mkv_file in enumerate(mkv_files):
-                new_file = mkv_file.with_name(f"{self.movie_name}_t{index:02d}.mkv")
+                if len(mkv_files) == 1:
+                    new_file = mkv_file.with_name(f"{self.movie_name}.mkv")
+                else:
+                    new_file = mkv_file.with_name(f"{self.movie_name}_part{index + 1}.mkv")
                 mkv_file.rename(new_file)
                 logger.info(f"-> 成功生成: {new_file.name}")
             
