@@ -7,7 +7,7 @@
     "icon": "bdmvprocessor_icon.png",
     "author": "bruz",
     "level": 1,
-    "release": false,
+    "release": true,
     "history": {
       "v1.0": "Initial release."
     }

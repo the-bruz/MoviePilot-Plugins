@@ -41,6 +41,7 @@ make install
 # 4. 编译并安装 BIN 模块 (闭源核心)
 echo "[4/5] 编译闭源核心 (BIN)..."
 cd ../makemkv-bin-${MAKEMKV_VERSION}
+mkdir -p tmp && touch tmp/eula_accepted  # 跳过需要手动同意的 EULA 提示
 make
 make install
 
