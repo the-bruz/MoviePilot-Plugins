@@ -7,45 +7,14 @@
         "content": [
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
-            "content": [
-              {
-                "component": "VSwitch",
-                "props": {
-                  "model": "enabled",
-                  "label": "启用插件"
-                }
-              }
-            ]
-          },
-          {
-            "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
-            "content": [
-              {
-                "component": "VSwitch",
-                "props": {
-                  "model": "run_once",
-                  "label": "保存后立即运行一次"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "component": "VRow",
-        "content": [
-          {
-            "component": "VCol",
             "props": { "cols": 12 },
             "content": [
               {
-                "component": "VCronField",
+                "component": "VAlert",
                 "props": {
-                  "model": "cron_schedule",
-                  "label": "定时运行策略 (Cron 表达式)",
-                  "placeholder": "例如: 0 3 * * *"
+                  "type": "info",
+                  "variant": "tonal",
+                  "text": "通用配置会同时影响整理历史重封装和监听下载器重封装。"
                 }
               }
             ]
@@ -57,23 +26,7 @@
         "content": [
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
-            "content": [
-              {
-                "component": "VTextField",
-                "props": {
-                  "model": "recent_days",
-                  "label": "查询最近整理记录天数",
-                  "type": "number",
-                  "min": 1,
-                  "placeholder": "7"
-                }
-              }
-            ]
-          },
-          {
-            "component": "VCol",
-            "props": { "cols": 12, "md": 6 },
+            "props": { "cols": 12, "md": 3 },
             "content": [
               {
                 "component": "VTextField",
@@ -86,15 +39,10 @@
                 }
               }
             ]
-          }
-        ]
-      },
-      {
-        "component": "VRow",
-        "content": [
+          },
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 4 },
+            "props": { "cols": 12, "md": 3 },
             "content": [
               {
                 "component": "VSwitch",
@@ -107,20 +55,20 @@
           },
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 4 },
+            "props": { "cols": 12, "md": 3 },
             "content": [
               {
                 "component": "VSwitch",
                 "props": {
                   "model": "delete_download_source",
-                  "label": "成功后删除下载源和整理记录"
+                  "label": "成功后删除下载源"
                 }
               }
             ]
           },
           {
             "component": "VCol",
-            "props": { "cols": 12, "md": 4 },
+            "props": { "cols": 12, "md": 3 },
             "content": [
               {
                 "component": "VSwitch",
@@ -134,22 +82,204 @@
         ]
       },
       {
-        "component": "VRow",
+        "component": "VDivider",
+        "props": { "class": "my-4" }
+      },
+      {
+        "component": "VTabs",
+        "props": {
+          "model": "_tabs",
+          "fixed-tabs": true
+        },
         "content": [
           {
-            "component": "VCol",
-            "props": { "cols": 12 },
+            "component": "VTab",
+            "props": { "value": "history_tab" },
+            "text": "整理历史重封装"
+          },
+          {
+            "component": "VTab",
+            "props": { "value": "intercept_tab" },
+            "text": "监听下载器重封装"
+          }
+        ]
+      },
+      {
+        "component": "VWindow",
+        "props": {
+          "model": "_tabs",
+          "style": {
+            "padding-top": "24px",
+            "padding-bottom": "24px"
+          }
+        },
+        "content": [
+          {
+            "component": "VWindowItem",
+            "props": { "value": "history_tab" },
             "content": [
               {
-                "component": "VSelect",
-                "props": {
-                  "model": "bdmv_action",
-                  "label": "旧媒体库 BDMV 处理方式",
-                  "items": [
-                    { "title": "创建 .ignore 文件", "value": "ignore" },
-                    { "title": "删除旧 BDMV 和 CERTIFICATE", "value": "delete_bdmv" }
-                  ]
-                }
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VSwitch",
+                        "props": {
+                          "model": "history_enabled",
+                          "label": "启用定时重封装"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VSwitch",
+                        "props": {
+                          "model": "run_once",
+                          "label": "保存后立即运行一次"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12 },
+                    "content": [
+                      {
+                        "component": "VAlert",
+                        "props": {
+                          "type": "info",
+                          "variant": "tonal",
+                          "text": "整理历史模式会扫描最近整理记录，在媒体库已入库的原盘目录中重封装 MKV，并按配置处理旧 BDMV。"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VCronField",
+                        "props": {
+                          "model": "cron_schedule",
+                          "label": "定时运行策略 (Cron 表达式)",
+                          "placeholder": "例如: 0 3 * * *"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VTextField",
+                        "props": {
+                          "model": "recent_days",
+                          "label": "查询最近整理记录天数",
+                          "type": "number",
+                          "min": 1,
+                          "placeholder": "7"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12 },
+                    "content": [
+                      {
+                        "component": "VSelect",
+                        "props": {
+                          "model": "bdmv_action",
+                          "label": "旧媒体库 BDMV 处理方式",
+                          "items": [
+                            { "title": "创建 .ignore 文件", "value": "ignore" },
+                            { "title": "删除旧 BDMV 和 CERTIFICATE", "value": "delete_bdmv" }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "component": "VWindowItem",
+            "props": { "value": "intercept_tab" },
+            "content": [
+              {
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VSwitch",
+                        "props": {
+                          "model": "intercept_enabled",
+                          "label": "启用下载器完成后拦截重封装"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12, "md": 6 },
+                    "content": [
+                      {
+                        "component": "VSwitch",
+                        "props": {
+                          "model": "intercept_transfer_mkv",
+                          "label": "重封装后发起整理"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "component": "VRow",
+                "content": [
+                  {
+                    "component": "VCol",
+                    "props": { "cols": 12 },
+                    "content": [
+                      {
+                        "component": "VAlert",
+                        "props": {
+                          "type": "info",
+                          "variant": "tonal",
+                          "text": "监听模式会在 MP 原盘整理前拦截，原整理记录会保留为失败；插件会在下载目录重封装 MKV，并用原下载历史中的媒体 ID 发起新整理。"
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
