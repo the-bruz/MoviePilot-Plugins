@@ -30,7 +30,7 @@ class DiscRemuxPlugin(_PluginBase):
     plugin_name = "蓝光原盘重封装"
     plugin_desc = "基于整理历史或下载器拦截，将蓝光原盘重封装为 MKV。"
     plugin_icon = "https://raw.githubusercontent.com/the-bruz/MoviePilot-Plugins/main/icons/discremuxplugin.png"
-    plugin_version = "1.1.1-alpha"
+    plugin_version = "1.2.0"
 
     plugin_author = "bruz"
     author_url = "https://github.com/the-bruz"
@@ -59,7 +59,7 @@ class DiscRemuxPlugin(_PluginBase):
             self.update_config(config)
         self._history_enabled = bool(config.get("history_enabled", config.get("enabled")))
         self._intercept_enabled = bool(config.get("intercept_enabled"))
-        self._message = config.get("message") or "插件初始化完成，等待定时任务执行。"
+        self._message = config.get("message") or "插件初始化完成，等待任务执行。"
         self._stop_event = threading.Event()
         self._active_intercepts = set()
         self._remuxers = set()
@@ -716,12 +716,22 @@ class DiscRemuxPlugin(_PluginBase):
                 event_data.cancel = True
                 event_data.source = self.plugin_name
                 event_data.reason = "蓝光原盘重封装任务已在运行，跳过原整理"
+                logger.info(
+                    "下载器原盘整理已存在接管任务，取消重复整理: "
+                    f"source={source_root}, downloader={downloader}, hash={download_hash}"
+                )
                 return
             self._active_intercepts.add(dedupe_key)
 
         output_file = source_root.parent / f"{source_root.name}.mkv"
         min_size_gb = float(config.get("min_mkv_size_gb") or 5)
         output_exists = self._target_mkv_exists(output_file, min_size_gb)
+        logger.info(
+            "接管下载器原盘整理: "
+            f"source={source_root}, output={output_file}, downloader={downloader}, "
+            f"hash={download_hash}, media={download_history.title} ({download_history.year or '-'}), "
+            f"tmdbid={download_history.tmdbid}, output_exists={output_exists}"
+        )
         record = self._build_intercept_record(
             dedupe_key=dedupe_key,
             source_root=source_root,
@@ -753,6 +763,7 @@ class DiscRemuxPlugin(_PluginBase):
             daemon=True,
         )
         worker.start()
+        logger.info(f"已启动下载目录原盘重封装后台任务: source={source_root}, output={output_file}")
 
     def _build_intercept_record(
             self,
@@ -801,6 +812,7 @@ class DiscRemuxPlugin(_PluginBase):
 
     def _run_existing_intercept_output(self, dedupe_key: str, source_root: Path, output_file: Path, download_history, config: dict) -> None:
         try:
+            logger.info(f"下载目录 MKV 已存在，跳过 MakeMKV 并进入后处理: output={output_file}")
             triggered_transfer, new_transfer_history_id = self._post_process_intercept_output(
                 output_file=output_file,
                 download_history=download_history,
@@ -815,6 +827,11 @@ class DiscRemuxPlugin(_PluginBase):
                     "new_transfer_history_id": new_transfer_history_id,
                 },
                 finished_at=self._now_str(),
+            )
+            logger.info(
+                "已存在 MKV 后处理完成: "
+                f"output={output_file}, triggered_transfer={triggered_transfer}, "
+                f"new_transfer_history_id={new_transfer_history_id}"
             )
         except Exception as e:
             self._update_history_record(
@@ -831,6 +848,7 @@ class DiscRemuxPlugin(_PluginBase):
     def _run_intercept_remux(self, dedupe_key: str, source_root: Path, output_file: Path, download_history, config: dict) -> None:
         started_at = time.time()
         try:
+            logger.info(f"开始下载目录原盘重封装: source={source_root}, output={output_file}")
             remuxer = DiscRemuxer()
             self._register_remuxer(remuxer)
             remuxer.validate_environment()
@@ -847,6 +865,10 @@ class DiscRemuxPlugin(_PluginBase):
                     "error": None,
                 },
                 finished_at=finished_at,
+            )
+            logger.info(
+                "下载目录原盘重封装完成: "
+                f"source={source_root}, output={output_file}, duration={int(time.time() - started_at)}s"
             )
 
             triggered_transfer, new_transfer_history_id = self._post_process_intercept_output(
@@ -866,7 +888,11 @@ class DiscRemuxPlugin(_PluginBase):
                 finished_at=self._now_str(),
             )
             self._message = f"下载目录原盘重封装完成: {output_file}"
-            logger.info(self._message)
+            logger.info(
+                "下载器拦截重封装流程完成: "
+                f"source={source_root}, output={output_file}, triggered_transfer={triggered_transfer}, "
+                f"new_transfer_history_id={new_transfer_history_id}"
+            )
         except subprocess.CalledProcessError as e:
             error = e.stderr or str(e)
             self._update_history_record(
@@ -892,12 +918,23 @@ class DiscRemuxPlugin(_PluginBase):
 
     def _post_process_intercept_output(self, output_file: Path, download_history, config: dict) -> Tuple[bool, Optional[int]]:
         if not bool(config.get("intercept_transfer_mkv", True)):
+            logger.info(f"配置为不整理重封装 MKV，跳过后续整理: output={output_file}")
             return False, None
 
+        logger.info(
+            "开始整理重封装 MKV: "
+            f"output={output_file}, downloader={self._history_value(download_history, 'downloader')}, "
+            f"hash={self._history_value(download_history, 'download_hash')}, "
+            f"tmdbid={self._history_value(download_history, 'tmdbid')}"
+        )
         state, errmsg = self._transfer_remuxed_mkv(output_file, download_history)
         if not state:
             raise RuntimeError(f"重封装后整理失败: {errmsg}")
         transfer_history = TransferHistoryOper().get_by_src(output_file.as_posix(), storage="local")
+        logger.info(
+            "重封装 MKV 整理完成: "
+            f"output={output_file}, transfer_history_id={transfer_history.id if transfer_history else None}"
+        )
         if transfer_history and bool(config.get("refresh_media_server", True)):
             self._refresh_media_server(transfer_history, output_file)
         return True, transfer_history.id if transfer_history else None
@@ -905,6 +942,7 @@ class DiscRemuxPlugin(_PluginBase):
     @staticmethod
     def _cleanup_intercept_source(source_root: Path, config: dict) -> str:
         if not bool(config.get("delete_download_source")):
+            logger.info(f"配置为保留下载目录原盘: source={source_root}")
             return "none"
         shutil.rmtree(source_root, ignore_errors=True)
         logger.info(f"已删除下载目录原盘: {source_root}")
