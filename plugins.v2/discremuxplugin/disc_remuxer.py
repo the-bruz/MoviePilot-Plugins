@@ -1,17 +1,12 @@
-import csv
 import subprocess
-import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 from app.log import logger
-import docker
 
 
 class DiscRemuxer:
-    """蓝光/光盘源自动化重封装处理器。"""
-
-    _TINFO_DURATION_INDEX: int = 8
+    """使用 FFmpeg Blu-ray 协议重封装蓝光原盘。"""
 
     def __init__(self) -> None:
         self._process: Optional[subprocess.Popen] = None
@@ -20,40 +15,38 @@ class DiscRemuxer:
         process = self._process
         if not process or process.poll() is not None:
             return
-        logger.info(f"正在终止 MakeMKV 进程: pid={process.pid}")
+        logger.info(f"正在终止 FFmpeg 重封装进程: pid={process.pid}")
         process.terminate()
         try:
             process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            logger.warning(f"MakeMKV 进程未在 {timeout} 秒内退出，强制终止: pid={process.pid}")
+            logger.warning(f"FFmpeg 进程未在 {timeout} 秒内退出，强制终止: pid={process.pid}")
             process.kill()
             process.wait(timeout=5)
 
     def validate_environment(self) -> None:
-        """检查 MakeMKV 是否可用，如果不存在则自动尝试编译安装。"""
+        """检查 FFmpeg 可执行文件及其 Blu-ray 协议支持。"""
         try:
-            subprocess.run(["makemkvcon"], capture_output=True, check=False)
-            logger.info("环境检查通过，makemkvcon 已安装。")
-        except FileNotFoundError:
-            logger.warning("未检测到 makemkvcon，正在尝试自动编译安装，这可能需要几分钟，请耐心等待...")
-            self._install_makemkv()
-        except Exception as e:
-            raise RuntimeError(f"环境检查失败，详细信息: {e}")
+            result = subprocess.run(
+                ["ffmpeg", "-hide_banner", "-protocols"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except FileNotFoundError as e:
+            raise RuntimeError("未检测到 ffmpeg，请在 MoviePilot 容器中安装 FFmpeg。") from e
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"无法检查 FFmpeg 协议支持: {e.stderr}") from e
 
-
-    def _install_makemkv(self) -> None:
-        script_path = Path(__file__).parent / "install_makemkv.sh"
-
-        container = docker.from_env().containers.get("moviepilot")
-        result = container.exec_run(
-            ["bash", str(script_path)],
-            user="0",
-        )
-
-        if result.exit_code != 0:
-            raise RuntimeError(result.output.decode(errors="replace"))
-
-        logger.info("MakeMKV 自动编译安装完成。")
+        if "bluray" not in result.stdout.split():
+            raise RuntimeError("当前 FFmpeg 未启用 bluray 协议，请使用包含 libbluray 支持的 FFmpeg。")
+        try:
+            subprocess.run(["ffprobe", "-version"], capture_output=True, check=True)
+        except FileNotFoundError as e:
+            raise RuntimeError("未检测到 ffprobe，请安装与 FFmpeg 同版本的 ffprobe。") from e
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError("ffprobe 不可用，请检查 FFmpeg 安装。") from e
+        logger.info("环境检查通过，FFmpeg Blu-ray 协议可用。")
 
     def _run_process(self, cmd: list[str]) -> str:
         self._process = subprocess.Popen(
@@ -65,96 +58,78 @@ class DiscRemuxer:
         )
         try:
             output, _ = self._process.communicate()
-            return_code = self._process.returncode
-            if return_code != 0:
+            if self._process.returncode != 0:
                 stderr = "\n".join((output or "").splitlines()[-80:])
-                raise subprocess.CalledProcessError(return_code, cmd, stderr=stderr)
+                raise subprocess.CalledProcessError(self._process.returncode, cmd, stderr=stderr)
             return output or ""
         finally:
             self._process = None
 
-    def _extract_info(self, source_root: Path) -> Dict[int, Dict[int, str]]:
-        cmd = ["makemkvcon", "--robot", "--messages=-stdout", "info", f"file:{source_root}"]
-        logger.info(f"正在扫描原盘媒体信息: {source_root}")
-        output = self._run_process(cmd)
-
-        titles: Dict[int, Dict[int, str]] = {}
-        for line in output.splitlines():
-            if line.startswith("TINFO:"):
-                row = next(csv.reader([line[6:]]))
-                titles.setdefault(int(row[0]), {})[int(row[1])] = row[3]
-        return titles
+    @staticmethod
+    def _playlist_ids(source_root: Path) -> list[str]:
+        playlist_dir = source_root / "BDMV" / "PLAYLIST"
+        playlist_ids = sorted(
+            playlist_file.stem
+            for playlist_file in playlist_dir.glob("*.mpls")
+            if playlist_file.stem.isdigit()
+        )
+        if not playlist_ids:
+            raise RuntimeError(f"未在原盘中找到播放列表: {playlist_dir}")
+        return playlist_ids
 
     @staticmethod
-    def parse_duration(duration_str: str) -> int:
+    def _bluray_url(source_root: Path) -> str:
+        return f"bluray:{source_root.as_posix()}"
+
+    def _playlist_duration(self, source_root: Path, playlist_id: str) -> float:
+        cmd = [
+            "ffprobe", "-v", "error", "-playlist", playlist_id,
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            "-i", self._bluray_url(source_root),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            logger.debug(f"无法读取播放列表时长，跳过: playlist={playlist_id}, error={result.stderr.strip()}")
+            return 0
         try:
-            h, m, s = map(int, duration_str.split(":"))
-            return h * 3600 + m * 60 + s
-        except (ValueError, AttributeError):
+            return float(result.stdout.strip())
+        except ValueError:
             return 0
 
-    def _get_longest_title(self, titles: Dict[int, Dict[int, str]]) -> str:
-        if not titles:
-            raise RuntimeError("未能在该原盘中找到任何可提取的 Title。")
-        target_title, _ = max(
-            titles.items(),
-            key=lambda item: self.parse_duration(item[1].get(self._TINFO_DURATION_INDEX, "00:00:00")),
-        )
-        return str(target_title)
+    def _get_longest_playlist(self, source_root: Path) -> str:
+        durations = {
+            playlist_id: self._playlist_duration(source_root, playlist_id)
+            for playlist_id in self._playlist_ids(source_root)
+        }
+        playlist_id, duration = max(durations.items(), key=lambda item: item[1])
+        if duration <= 0:
+            raise RuntimeError("无法从原盘播放列表读取有效时长。")
+        logger.info(f"自动识别主正片播放列表: {playlist_id}, duration={duration:.0f}s")
+        return playlist_id
 
-    @staticmethod
-    def _find_generated_mkv(output_dir: Path, before: set[Path], started_at: float) -> Path:
-        candidates = []
-        for mkv_file in output_dir.glob("*.mkv"):
-            if mkv_file in before or not mkv_file.is_file():
-                continue
-            try:
-                stat = mkv_file.stat()
-            except OSError:
-                continue
-            if stat.st_mtime >= started_at - 2:
-                candidates.append((stat.st_mtime, stat.st_size, mkv_file))
-        if not candidates:
-            raise RuntimeError(f"处理完成，但未能找到 MakeMKV 新生成的 MKV 文件: {output_dir}")
-        candidates.sort(reverse=True)
-        return candidates[0][2]
-
-    def remux_to_mkv(
-        self,
-        source_root_path: str,
-        output_file_path: str,
-    ) -> Path:
-        """提取最长正片，先生成 partial 文件，成功后改名为最终 MKV。"""
+    def remux_to_mkv(self, source_root_path: str, output_file_path: str) -> Path:
+        """提取最长播放列表，成功后将 partial 文件改名为最终 MKV。"""
         source_root = Path(source_root_path)
         output_file = Path(output_file_path)
-        output_dir = output_file.parent
         partial_file = output_file.with_suffix(".partial.mkv")
 
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
         if partial_file.exists():
             partial_file.unlink()
 
-        titles = self._extract_info(source_root)
-        target_title = self._get_longest_title(titles)
-        logger.info(f"自动识别主正片 Title ID: {target_title}")
-
-        before = set(output_dir.glob("*.mkv"))
-        started_at = time.time()
+        playlist_id = self._get_longest_playlist(source_root)
         cmd = [
-            "makemkvcon",
-            "--robot",
-            "--messages=-stdout",
-            "mkv",
-            f"file:{source_root}",
-            target_title,
-            output_dir.as_posix(),
+            "ffmpeg", "-y", "-nostdin", "-playlist", playlist_id,
+            "-i", self._bluray_url(source_root),
+            "-map", "0", "-map_metadata", "0", "-map_chapters", "0", "-c", "copy",
+            partial_file.as_posix(),
         ]
-        logger.info(f"开始执行 MakeMKV 重封装: source={source_root}, output_dir={output_dir}")
-
+        logger.info(
+            f"开始执行 FFmpeg Blu-ray 重封装: source={source_root}, "
+            f"playlist={playlist_id}, output={output_file}"
+        )
         self._run_process(cmd)
-
-        generated_file = self._find_generated_mkv(output_dir, before, started_at)
-        generated_file.rename(partial_file)
         partial_file.rename(output_file)
         logger.info(f"重封装完成: {output_file}")
         return output_file
