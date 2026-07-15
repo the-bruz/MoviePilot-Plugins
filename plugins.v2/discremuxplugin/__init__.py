@@ -30,7 +30,7 @@ class DiscRemuxPlugin(_PluginBase):
     plugin_name = "蓝光原盘重封装"
     plugin_desc = "基于整理历史或下载器拦截，将蓝光原盘重封装为 MKV。"
     plugin_icon = "https://raw.githubusercontent.com/the-bruz/MoviePilot-Plugins/main/icons/discremuxplugin.png"
-    plugin_version = "2.0.1"
+    plugin_version = "2.0.1-alpha"
 
     plugin_author = "bruz"
     author_url = "https://github.com/the-bruz"
@@ -101,7 +101,7 @@ class DiscRemuxPlugin(_PluginBase):
     def stop_service(self):
         """停止正在执行的重封装任务。"""
         self._stop_event.set()
-        logger.info("收到停用信号，正在终止 MakeMKV 重封装任务...")
+        logger.info("收到停用信号，正在终止 FFmpeg 重封装任务...")
         if self._scheduler:
             try:
                 self._scheduler.shutdown(wait=False)
@@ -114,7 +114,7 @@ class DiscRemuxPlugin(_PluginBase):
             try:
                 remuxer.terminate()
             except Exception as e:
-                logger.error(f"尝试终止 MakeMKV 进程时发生异常: {e}")
+                logger.error(f"尝试终止 FFmpeg 进程时发生异常: {e}")
 
     def _register_remuxer(self, remuxer: DiscRemuxer) -> None:
         with self._remuxer_lock:
@@ -670,7 +670,7 @@ class DiscRemuxPlugin(_PluginBase):
                     self._refresh_media_server(history, output_file)
                 processed_count += 1
             except subprocess.CalledProcessError as e:
-                logger.error(f"MakeMKV 处理失败: history_id={history_id}, stderr={e.stderr}")
+                logger.error(f"FFmpeg 重封装失败: history_id={history_id}, stderr={e.stderr}")
             except Exception as e:
                 logger.error(f"处理整理历史失败: history_id={history_id}, error={e}", exc_info=True)
 
@@ -739,7 +739,7 @@ class DiscRemuxPlugin(_PluginBase):
             download_history=download_history_snapshot,
             mediainfo=mediainfo,
             status="skipped" if output_exists else "running",
-            remux_error="目标 MKV 已存在，跳过 MakeMKV 重封装" if output_exists else None,
+            remux_error="目标 MKV 已存在，跳过 FFmpeg 重封装" if output_exists else None,
         )
         self._save_history_record(record)
 
@@ -812,7 +812,7 @@ class DiscRemuxPlugin(_PluginBase):
 
     def _run_existing_intercept_output(self, dedupe_key: str, source_root: Path, output_file: Path, download_history, config: dict) -> None:
         try:
-            logger.info(f"下载目录 MKV 已存在，跳过 MakeMKV 并进入后处理: output={output_file}")
+            logger.info(f"下载目录 MKV 已存在，跳过 FFmpeg 重封装并进入后处理: output={output_file}")
             triggered_transfer, new_transfer_history_id = self._post_process_intercept_output(
                 output_file=output_file,
                 download_history=download_history,
