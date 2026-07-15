@@ -23,14 +23,14 @@
 大致流程：
 
 1. 查找需要处理的蓝光原盘目录。
-2. 使用 FFmpeg 的 `bluray:` 协议选择最长播放列表并生成 MKV。
+2. 解析最长蓝光播放列表，使用 FFmpeg 拼接其 M2TS 片段并生成 MKV。
 3. 整理历史模式输出到媒体库条目目录，并按配置创建 `.ignore` 或删除旧 `BDMV` / `CERTIFICATE`。
 4. 监听下载器模式输出到下载目录，并可继续调用 MoviePilot 整理 MKV。
 5. 可选删除下载源；插件不会删除或篡改 MoviePilot 整理记录。
 
 #### 重要提醒
 
-蓝光原盘重封装插件依赖 MoviePilot container 内的 `ffmpeg` 和 `ffprobe`，且 FFmpeg 必须启用 `bluray` 协议（通常需要 `libbluray` 支持）。可通过 `ffmpeg -protocols | grep bluray` 确认。
+蓝光原盘重封装插件依赖 MoviePilot container 内的 `ffmpeg`。
 
 ## 使用方式
 

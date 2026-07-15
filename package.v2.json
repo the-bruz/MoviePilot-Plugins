@@ -1,14 +1,15 @@
 {
   "DiscRemuxPlugin": {
     "name": "蓝光原盘重封装",
-    "description": "基于整理历史或下载器拦截，将蓝光原盘重封装为 MKV。",
+    "description": "基于整理历史或下载器拦截，按蓝光播放列表重封装为 MKV。",
     "labels": "",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "icon": "https://raw.githubusercontent.com/the-bruz/MoviePilot-Plugins/main/icons/discremuxplugin.png",
     "author": "bruz",
     "level": 1,
     "release": true,
     "history": {
+      "v2.0.4": "改为解析播放列表并直接处理 M2TS，绕过 libbluray 协议。",
       "v2.0.3": "优化 FFmpeg 重封装失败日志。",
       "v2.0.2": "改用 FFmpeg Blu-ray 协议重封装。",
       "v2.0.1": "修复MakeMKV依赖无法正常安装的问题。",

@@ -4,14 +4,13 @@ MoviePilot v2 插件：基于整理历史或下载器拦截，将蓝光原盘重
 
 ## 依赖
 
-- 需要 `ffmpeg` 和 `ffprobe` 命令可用。
-- FFmpeg 必须编译启用 `bluray` 协议（通常需要 `libbluray` 支持）。可用 `ffmpeg -protocols | grep bluray` 确认。
+- 需要 `ffmpeg` 命令可用。
 
 ## 工作模式
 
 ### 整理历史重封装
 
-读取 MoviePilot 最近整理历史，找到已经入库到媒体库的蓝光原盘目录，使用 FFmpeg 的 `bluray:` 协议读取媒体库中的 BDMV，自动选择时长最长的播放列表重封装为 MKV，并输出到当前媒体库条目目录。
+读取 MoviePilot 最近整理历史，找到已经入库到媒体库的蓝光原盘目录，解析 BDMV 播放列表并自动选择时长最长的正片，将其引用的 M2TS 片段按顺序重封装为 MKV，并输出到当前媒体库条目目录。
 
 成功后可按配置：
 
