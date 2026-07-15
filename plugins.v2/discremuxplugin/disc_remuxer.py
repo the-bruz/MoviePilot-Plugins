@@ -59,7 +59,8 @@ class DiscRemuxer:
         try:
             output, _ = self._process.communicate()
             if self._process.returncode != 0:
-                stderr = "\n".join((output or "").splitlines()[-80:])
+                # 仅保留末尾错误，避免日志界面被 FFmpeg 的启动信息截断。
+                stderr = "\n".join((output or "").splitlines()[-20:])
                 raise subprocess.CalledProcessError(self._process.returncode, cmd, stderr=stderr)
             return output or ""
         finally:
@@ -120,7 +121,7 @@ class DiscRemuxer:
 
         playlist_id = self._get_longest_playlist(source_root)
         cmd = [
-            "ffmpeg", "-y", "-nostdin", "-playlist", playlist_id,
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-nostdin", "-playlist", playlist_id,
             "-i", self._bluray_url(source_root),
             "-map", "0", "-map_metadata", "0", "-map_chapters", "0", "-c", "copy",
             partial_file.as_posix(),
