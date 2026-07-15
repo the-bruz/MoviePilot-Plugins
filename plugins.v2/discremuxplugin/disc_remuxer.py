@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from app.log import logger
+import docker
 
 
 class DiscRemuxer:
@@ -39,23 +40,20 @@ class DiscRemuxer:
         except Exception as e:
             raise RuntimeError(f"环境检查失败，详细信息: {e}")
 
+
     def _install_makemkv(self) -> None:
         script_path = Path(__file__).parent / "install_makemkv.sh"
-        if not script_path.exists():
-            raise RuntimeError(f"安装脚本丢失: {script_path}")
 
-        try:
-            process = subprocess.run(
-                ["bash", str(script_path)],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            logger.info("MakeMKV 自动编译安装完成。")
-            logger.debug(f"安装日志输出: {process.stdout}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"MakeMKV 自动安装失败:\n{e.stderr}")
-            raise RuntimeError("MakeMKV 自动安装失败，请查看日志或尝试手动进入容器安装。")
+        container = docker.from_env().containers.get("moviepilot")
+        result = container.exec_run(
+            ["bash", str(script_path)],
+            user="0",
+        )
+
+        if result.exit_code != 0:
+            raise RuntimeError(result.output.decode(errors="replace"))
+
+        logger.info("MakeMKV 自动编译安装完成。")
 
     def _run_process(self, cmd: list[str]) -> str:
         self._process = subprocess.Popen(
