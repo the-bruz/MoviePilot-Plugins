@@ -30,7 +30,7 @@ class DiscRemuxPlugin(_PluginBase):
     plugin_name = "蓝光原盘重封装"
     plugin_desc = "基于整理历史或下载器拦截，将蓝光原盘重封装为 MKV。"
     plugin_icon = "https://raw.githubusercontent.com/the-bruz/MoviePilot-Plugins/main/icons/discremuxplugin.png"
-    plugin_version = "2.0.1-alpha"
+    plugin_version = "2.0.2"
 
     plugin_author = "bruz"
     author_url = "https://github.com/the-bruz"
